@@ -8,12 +8,12 @@
  *   match the bundles actually being served. Published games missing from it are disabled.
  */
 import 'dotenv/config';
-import { PrismaPg } from '@prisma/adapter-pg';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { z } from 'zod';
 import { PrismaClient } from '../src/generated/prisma/client';
+import { createDbAdapter } from '../src/prisma/create-adapter';
 import { GameControlSchema, GameIdSchema, SemverSchema } from '../src/shared';
 
 export interface SeedGame {
@@ -193,7 +193,7 @@ async function main(): Promise<void> {
   const gamesDir = process.env.LOCAL_GAMES_DIR;
 
   const games = gamesDir ? loadCatalog(gamesDir) : DEFAULT_GAMES;
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
+  const prisma = new PrismaClient({ adapter: createDbAdapter(databaseUrl) });
   try {
     await seed(prisma, cdnBaseUrl, games, { exclusive: !!gamesDir });
     const source = gamesDir ? ` from ${gamesDir}` : '';

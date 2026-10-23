@@ -82,10 +82,15 @@ function toPlayable(row: GameWithVersion): PlayableGame {
     bundleUrl: v.bundleUrl,
     thumbnailUrl: v.thumbnailUrl,
     description: row.description,
-    tags: row.tags,
-    controls: row.controls as GameControl[],
+    tags: stringArray(row.tags),
+    controls: stringArray(row.controls) as GameControl[],
     avgRoundSeconds: row.avgRoundSeconds,
     minAppVersion: v.minAppVersion,
     sdkVersion: v.sdkVersion,
   };
+}
+
+/** `tags` and `controls` are JSON array columns; anything that isn't a string is dropped. */
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }

@@ -1,23 +1,23 @@
 # Game Reels API
 
-NestJS (Fastify adapter) + Prisma/PostgreSQL implementation of [BACKEND.md](BACKEND.md).
+NestJS (Fastify adapter) + Prisma/MySQL implementation of [BACKEND.md](BACKEND.md).
 
 ## Quick start
 
-### Without Docker or Postgres
+### Without Docker or MySQL
 
 ```bash
 npm install
-npm run dev:local               # embedded Postgres + migrations + seed + API on :3000
+npm run dev:local               # local MySQL + migrations + seed + API on :3000
 ```
 
-This uses a real Postgres shipped as an npm package. When `../frontend` exists, it also builds the frontend's games, seeds them, and serves them at `/cdn/games/`, so the local app can play them: start the app in `frontend/` with `EXPO_PUBLIC_API_URL` unset (see BACKEND.md §11, "Connecting the frontend app"). Data lives in `.local-db/` (delete it to start fresh), and Ctrl+C stops everything. No `.env` is needed: local defaults are used for anything it doesn't set. Set `LOCAL_DB_PORT` to change the database port (default 54329), and `LOCAL_DB_VERBOSE=1` to see Postgres logs.
+This runs a real MySQL 8.4 that `mysql-memory-server` downloads on the first run (a few minutes) and reuses afterwards. When `../frontend` exists, it also builds the frontend's games, seeds them, and serves them at `/cdn/games/`, so the local app can play them: start the app in `frontend/` with `EXPO_PUBLIC_API_URL` unset (see BACKEND.md §11, "Connecting the frontend app"). The database is fresh on every run (the app signs in again by itself), and Ctrl+C stops everything. No `.env` is needed: local defaults are used for anything it doesn't set. Set `LOCAL_DB_PORT` to pin the database port (default: a free port), and `LOCAL_DB_VERBOSE=1` to see MySQL logs.
 
 ### With Docker
 
 ```bash
 cp .env.example .env            # then set real secrets
-docker compose up -d            # postgres + redis
+docker compose up -d            # mysql + redis
 npm install                     # also runs `prisma generate`
 npm run db:deploy               # apply migrations (use db:migrate when changing the schema)
 npm run db:seed                 # the five prototype games, published at 1.0.0
@@ -73,8 +73,8 @@ The game directory contains `game.json` (`id, name, description, tags, controls,
 
 ```bash
 npm test                        # unit
-npm run test:e2e                # e2e; starts Postgres via Testcontainers (needs Docker)
-TEST_DATABASE_URL=postgresql://... npm run test:e2e   # or reuse a database (its schema is WIPED)
+npm run test:e2e                # e2e; starts MySQL via Testcontainers (needs Docker)
+TEST_DATABASE_URL=mysql://... npm run test:e2e   # or reuse a database (all its tables are DROPPED)
 ```
 
 ## Docker

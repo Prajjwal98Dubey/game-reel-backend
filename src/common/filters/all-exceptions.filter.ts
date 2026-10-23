@@ -68,6 +68,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         body: { code: 'RATE_LIMITED', message: 'Too many requests. Try again shortly.' },
       };
     }
+    if (isMissingPlayer(exception)) {
+      // The token is valid but its player is gone (e.g. the database was reset). The app
+      // answers a 401 by creating a fresh guest session and retrying.
+      return {
+        status: HttpStatus.UNAUTHORIZED,
+        body: { code: 'UNAUTHORIZED', message: 'This player no longer exists. Sign in again.' },
+      };
+    }
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       return { status, body: { code: codeFor(status), message: exception.message } };
@@ -85,6 +93,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       body: { code: 'INTERNAL_ERROR', message: 'Something went wrong.' },
     };
   }
+}
+
+/**
+ * Prisma's foreign-key violation (P2003). In request handlers the only foreign keys written are
+ * to Player (plays, best scores, events), so this means the token's player doesn't exist.
+ */
+function isMissingPlayer(exception: unknown): boolean {
+  const e = exception as { name?: unknown; code?: unknown } | null;
+  return e?.name === 'PrismaClientKnownRequestError' && e.code === 'P2003';
 }
 
 function codeFor(status: number): ErrorCode {

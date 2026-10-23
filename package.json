@@ -35,7 +35,7 @@
     "@nestjs/platform-fastify": "11.2.7",
     "@nestjs/swagger": "11.4.7",
     "@nestjs/throttler": "6.7.1",
-    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/adapter-mariadb": "7.10.1",
     "@prisma/client": "7.10.1",
     "dotenv": "18.0.8",
     "fastify": "5.11.3",
@@ -53,14 +53,14 @@
     "@nestjs/cli": "11.0.24",
     "@nestjs/schematics": "11.1.0",
     "@nestjs/testing": "11.2.7",
-    "@testcontainers/postgresql": "12.2.1",
+    "@testcontainers/mysql": "12.2.1",
     "@types/jest": "30.0.0",
     "@types/mime-types": "3.0.1",
     "@types/node": "24.19.2",
     "@types/semver": "7.8.0",
     "@types/supertest": "7.2.1",
-    "embedded-postgres": "18.4.0-beta.17",
     "jest": "30.5.2",
+    "mysql-memory-server": "1.17.0",
     "pino-pretty": "13.2.0",
     "prettier": "3.9.10",
     "prisma": "7.10.1",
@@ -93,15 +93,5 @@
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"
     }
-  },
-  "allowScripts": {
-    "@embedded-postgres/darwin-arm64@18.4.0-beta.17": true,
-    "@embedded-postgres/darwin-x64@18.4.0-beta.17": true,
-    "@embedded-postgres/linux-arm@18.4.0-beta.17": true,
-    "@embedded-postgres/linux-arm64@18.4.0-beta.17": true,
-    "@embedded-postgres/linux-ia32@18.4.0-beta.17": true,
-    "@embedded-postgres/linux-ppc64@18.4.0-beta.17": true,
-    "@embedded-postgres/linux-x64@18.4.0-beta.17": true,
-    "@embedded-postgres/windows-x64@18.4.0-beta.17": true
   }
 }

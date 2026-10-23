@@ -26,8 +26,11 @@ export class ScoresRepository {
   }
 
   /**
-   * Atomically stores `score` if it beats the current best (or there is none).
-   * Returns true when the row was written, i.e. this is a new best.
+   * Stores `score` if it beats the current best (or there is none), safely under concurrent
+   * submissions. Returns true when it was written, i.e. this is a new best.
+   *
+   * Insert first, skipping duplicates: if two first plays race, exactly one insert wins and
+   * the other falls through to the conditional update, which only matches a lower score.
    */
   async upsertIfHigher(
     playerId: string,
@@ -35,13 +38,15 @@ export class ScoresRepository {
     score: number,
     db: Db = this.prisma,
   ): Promise<boolean> {
-    const rows = await db.$queryRaw<{ score: number }[]>`
-      INSERT INTO "BestScore" ("playerId", "gameId", "score", "updatedAt")
-      VALUES (${playerId}, ${gameId}, ${score}, now())
-      ON CONFLICT ("playerId", "gameId") DO UPDATE
-        SET "score" = EXCLUDED."score", "updatedAt" = now()
-        WHERE "BestScore"."score" < EXCLUDED."score"
-      RETURNING "score"`;
-    return rows.length > 0;
+    const inserted = await db.bestScore.createMany({
+      data: [{ playerId, gameId, score }],
+      skipDuplicates: true,
+    });
+    if (inserted.count > 0) return true;
+    const updated = await db.bestScore.updateMany({
+      where: { playerId, gameId, score: { lt: score } },
+      data: { score },
+    });
+    return updated.count > 0;
   }
 }
