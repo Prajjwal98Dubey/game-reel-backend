@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+src/generated/
+*.tsbuildinfo
+.env
+.env.*
+.local-db/
+docs/
+BACKEND.md
+FRONTEND_REF.md
