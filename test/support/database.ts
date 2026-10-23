@@ -1,7 +1,7 @@
-import { PrismaPg } from '@prisma/adapter-pg';
 import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { PrismaClient } from '../../src/generated/prisma/client';
+import { createDbAdapter } from '../../src/prisma/create-adapter';
 
 export interface TestDatabase {
   url: string;
@@ -10,8 +10,8 @@ export interface TestDatabase {
 }
 
 /**
- * A migrated, empty Postgres for e2e tests.
- * Uses TEST_DATABASE_URL when set (the schema is wiped first!), otherwise starts a
+ * A migrated, empty MySQL database for e2e tests.
+ * Uses TEST_DATABASE_URL when set (every table in it is dropped first!), otherwise starts a
  * throwaway container with Testcontainers (requires Docker).
  */
 export async function startTestDatabase(): Promise<TestDatabase> {
@@ -19,17 +19,16 @@ export async function startTestDatabase(): Promise<TestDatabase> {
   let stopContainer = async () => {};
 
   if (!url) {
-    const { PostgreSqlContainer } = await import('@testcontainers/postgresql');
-    const container = await new PostgreSqlContainer('postgres:17-alpine').start();
+    const { MySqlContainer } = await import('@testcontainers/mysql');
+    const container = await new MySqlContainer('mysql:8.4').start();
     url = container.getConnectionUri();
     stopContainer = async () => {
       await container.stop();
     };
   }
 
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
-  await prisma.$executeRawUnsafe('DROP SCHEMA IF EXISTS public CASCADE');
-  await prisma.$executeRawUnsafe('CREATE SCHEMA public');
+  const prisma = new PrismaClient({ adapter: createDbAdapter(url) });
+  await dropAllTables(prisma);
   execSync('npx prisma migrate deploy', {
     cwd: resolve(__dirname, '../..'),
     env: { ...process.env, DATABASE_URL: url },
@@ -44,4 +43,18 @@ export async function startTestDatabase(): Promise<TestDatabase> {
       await stopContainer();
     },
   };
+}
+
+/** Drops every table in the current database. One transaction keeps it on one connection. */
+async function dropAllTables(prisma: PrismaClient): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+    const tables = await tx.$queryRawUnsafe<{ name: string }[]>(
+      'SELECT table_name AS name FROM information_schema.tables WHERE table_schema = DATABASE()',
+    );
+    for (const { name } of tables) {
+      await tx.$executeRawUnsafe(`DROP TABLE \`${name.replace(/`/g, '``')}\``);
+    }
+    await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+  });
 }

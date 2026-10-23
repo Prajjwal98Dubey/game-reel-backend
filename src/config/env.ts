@@ -9,7 +9,9 @@ export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  DATABASE_URL: z.url(),
+  DATABASE_URL: z
+    .url()
+    .refine((v) => v.startsWith('mysql://'), 'DATABASE_URL must be a mysql:// URL'),
   /** Optional in the MVP; rate limits fall back to in-memory storage. */
   REDIS_URL: optionalString.pipe(z.url().optional()),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),

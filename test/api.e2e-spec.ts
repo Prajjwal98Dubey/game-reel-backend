@@ -88,6 +88,28 @@ describe('Game Reels API (e2e)', () => {
         'UNAUTHORIZED',
       );
     });
+
+    it('answers 401 when the token belongs to a player that no longer exists', async () => {
+      const { playerId, auth } = await guest('device-deleted-01');
+      await db.prisma.player.delete({ where: { id: playerId } });
+
+      const play = await http
+        .post('/v1/plays')
+        .set('Authorization', auth)
+        .send({ gameId: 'stack', gameVersion: '1.0.0', score: 3, durationMs: 10_000 })
+        .expect(401);
+      expectError(play.body, 'UNAUTHORIZED');
+      const events = await http
+        .post('/v1/events')
+        .set('Authorization', auth)
+        .send({
+          events: [
+            { type: 'tab_view', clientTs: '2026-10-22T10:15:03.120Z', props: { tab: 'reels' } },
+          ],
+        })
+        .expect(401);
+      expectError(events.body, 'UNAUTHORIZED');
+    });
   });
 
   describe('catalogue', () => {

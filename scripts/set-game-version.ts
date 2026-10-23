@@ -6,7 +6,7 @@
  *   npm run set-game-version -- <gameId> <version>
  */
 import 'dotenv/config';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { createDbAdapter } from '../src/prisma/create-adapter';
 import { PrismaClient } from '../src/generated/prisma/client';
 
 async function main(): Promise<void> {
@@ -15,7 +15,7 @@ async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
 
   const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    adapter: createDbAdapter(process.env.DATABASE_URL),
   });
   try {
     const target = await prisma.gameVersion.findUnique({

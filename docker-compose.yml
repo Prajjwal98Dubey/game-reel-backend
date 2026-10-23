@@ -1,19 +1,20 @@
 services:
-  postgres:
-    image: postgres:17-alpine
+  mysql:
+    image: mysql:8.4
     environment:
-      POSTGRES_USER: gamereels
-      POSTGRES_PASSWORD: gamereels
-      POSTGRES_DB: gamereels
+      MYSQL_DATABASE: gamereels
+      MYSQL_USER: gamereels
+      MYSQL_PASSWORD: gamereels
+      MYSQL_ROOT_PASSWORD: gamereels-root
     ports:
-      - '5432:5432'
+      - '3306:3306'
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mysqldata:/var/lib/mysql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U gamereels']
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-ugamereels', '-pgamereels']
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
 
   redis:
     image: redis:7-alpine
@@ -21,4 +22,4 @@ services:
       - '6379:6379'
 
 volumes:
-  pgdata:
+  mysqldata:

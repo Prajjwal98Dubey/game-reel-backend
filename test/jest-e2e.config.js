@@ -1,4 +1,4 @@
-/** End-to-end tests: the full Nest app against a real Postgres (see test/support/database.ts). */
+/** End-to-end tests: the full Nest app against a real MySQL (see test/support/database.ts). */
 module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '..',

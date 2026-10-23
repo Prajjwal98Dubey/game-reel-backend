@@ -5,15 +5,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
 }
 
 model Player {
-  id         String     @id @default(uuid())
-  kind       PlayerKind @default(GUEST) // GUEST now, REGISTERED later
-  deviceId   String     @unique
-  createdAt  DateTime   @default(now())
-  lastSeenAt DateTime   @default(now())
+  id         String      @id @default(uuid())
+  kind       PlayerKind  @default(GUEST) // GUEST now, REGISTERED later
+  deviceId   String      @unique
+  createdAt  DateTime    @default(now())
+  lastSeenAt DateTime    @default(now())
   plays      Play[]
   events     Event[]
   bests      BestScore[]
@@ -25,18 +25,19 @@ enum PlayerKind {
 }
 
 model Game {
-  id               String       @id // "stack"
+  id               String        @id // "stack"
   name             String
-  description      String
-  tags             String[]
-  controls         String[] // ["tap"] | ["drag-x"]
+  description      String        @db.Text
+  // JSON arrays: MySQL has no array columns.
+  tags             Json // ["timing", "one-tap"]
+  controls         Json // ["tap"] | ["drag-x"]
   avgRoundSeconds  Int
-  status           GameStatus   @default(DRAFT)
-  currentVersion   GameVersion? @relation("current", fields: [currentVersionId], references: [id])
-  currentVersionId String?      @unique
+  status           GameStatus    @default(DRAFT)
+  currentVersion   GameVersion?  @relation("current", fields: [currentVersionId], references: [id])
+  currentVersionId String?       @unique
   versions         GameVersion[] @relation("versions")
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([status])
 }
@@ -52,8 +53,8 @@ model GameVersion {
   gameId         String
   game           Game     @relation("versions", fields: [gameId], references: [id])
   version        String // semver "1.2.0"
-  bundleUrl      String
-  thumbnailUrl   String
+  bundleUrl      String   @db.VarChar(512)
+  thumbnailUrl   String   @db.VarChar(512)
   sizeBytes      Int
   sdkVersion     Int
   minAppVersion  String

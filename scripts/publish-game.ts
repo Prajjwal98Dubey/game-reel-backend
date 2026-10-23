@@ -8,7 +8,6 @@
  * --dry-run  validates and reports sizes without uploading or writing to the database.
  */
 import 'dotenv/config';
-import { PrismaPg } from '@prisma/adapter-pg';
 import { lookup } from 'mime-types';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
@@ -16,6 +15,7 @@ import { gzipSync } from 'node:zlib';
 import { z } from 'zod';
 import { S3StorageProvider } from '../src/common/storage/storage.provider';
 import { PrismaClient } from '../src/generated/prisma/client';
+import { createDbAdapter } from '../src/prisma/create-adapter';
 import { GameControlSchema, GameIdSchema, SemverSchema } from '../src/shared';
 
 const SIZE_LIMIT_BYTES = 500 * 1024;
@@ -112,7 +112,7 @@ async function main(): Promise<void> {
     secretAccessKey: storageEnv.STORAGE_SECRET_KEY,
   });
   const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+    adapter: createDbAdapter(env.DATABASE_URL),
   });
 
   try {
