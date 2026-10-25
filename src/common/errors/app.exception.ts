@@ -35,6 +35,14 @@ export class AppException extends HttpException {
     );
   }
 
+  static noRelease(): AppException {
+    return new AppException(
+      'NOT_FOUND',
+      'No app release has been published yet.',
+      HttpStatus.NOT_FOUND,
+    );
+  }
+
   static unauthorized(message = 'Missing or invalid bearer token.'): AppException {
     return new AppException('UNAUTHORIZED', message, HttpStatus.UNAUTHORIZED);
   }

@@ -16,6 +16,7 @@ import { GamesModule } from './modules/games/games.module';
 import { HealthModule } from './modules/health/health.module';
 import { PlayersModule } from './modules/players/players.module';
 import { PlaysModule } from './modules/plays/plays.module';
+import { ReleasesModule } from './modules/releases/releases.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
@@ -48,6 +49,7 @@ export class AppModule {
         FeedModule,
         PlaysModule,
         EventsModule,
+        ReleasesModule,
         HealthModule,
       ],
       providers: [
