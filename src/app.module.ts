@@ -7,7 +7,7 @@ import { AuthModule } from './common/auth/auth.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { playerTracker } from './common/guards/player-throttler';
-import { LocalCdnUrlInterceptor } from './common/local-cdn/local-cdn';
+import { isLoopbackCdn, LocalCdnUrlInterceptor } from './common/local-cdn/local-cdn';
 import { ConfigModule } from './config/config.module';
 import { AppConfig } from './config/env';
 import { EventsModule } from './modules/events/events.module';
@@ -56,7 +56,7 @@ export class AppModule {
         { provide: APP_GUARD, useClass: ThrottlerGuard },
         { provide: APP_PIPE, useClass: ZodValidationPipe },
         { provide: APP_FILTER, useClass: AllExceptionsFilter },
-        ...(config.LOCAL_GAMES_DIR
+        ...(config.LOCAL_GAMES_DIR && isLoopbackCdn(config.CDN_BASE_URL)
           ? [{ provide: APP_INTERCEPTOR, useClass: LocalCdnUrlInterceptor }]
           : []),
       ],

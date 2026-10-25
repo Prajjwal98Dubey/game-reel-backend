@@ -32,7 +32,7 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
     app.enableCors({ origin: config.CORS_ORIGINS.includes('*') ? true : config.CORS_ORIGINS });
   }
 
-  // Local development: serve built game bundles in place of the CDN (see LOCAL_GAMES_DIR).
+  // No separate CDN: serve built game bundles from this API (see LOCAL_GAMES_DIR).
   if (config.LOCAL_GAMES_DIR) {
     await app.register(fastifyStatic, {
       root: config.LOCAL_GAMES_DIR,
