@@ -12,6 +12,15 @@ export const LOCAL_CDN_BASE_PATH = '/cdn';
 export const LOCAL_CDN_GAMES_PREFIX = `${LOCAL_CDN_BASE_PATH}/games/`;
 
 /**
+ * True when CDN_BASE_URL points at this machine (local development). On a real domain, e.g.
+ * `https://api.example.com/cdn`, the stored URLs are already correct and are served as-is.
+ */
+export function isLoopbackCdn(cdnBaseUrl: string): boolean {
+  const host = new URL(cdnBaseUrl).hostname;
+  return host === 'localhost' || host === '[::1]' || host.startsWith('127.');
+}
+
+/**
  * Local development only. Manifests store absolute URLs under CDN_BASE_URL (localhost).
  * This rewrites them to the host the request came in on, so a phone on the LAN or the
  * Android emulator (10.0.2.2) loads bundles from this machine too.

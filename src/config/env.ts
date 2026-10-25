@@ -33,8 +33,9 @@ export const EnvSchema = z.object({
         .filter(Boolean),
     ),
   /**
-   * Local development only: a built games directory (the frontend's `games/dist`) served at
-   * `/cdn/games/`, standing in for the CDN. Set CDN_BASE_URL to `http://localhost:<PORT>/cdn`.
+   * A built games directory (the frontend's `games/dist`) served at `/cdn/games/`, standing in
+   * for the CDN. Set CDN_BASE_URL to this API's `/cdn`: `http://localhost:<PORT>/cdn` locally,
+   * or e.g. `https://api.example.com/cdn` on a server without a separate CDN.
    */
   LOCAL_GAMES_DIR: optionalString,
 });

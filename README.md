@@ -69,6 +69,27 @@ npm run set-game-version -- stack 1.1.0                 # promote later, or roll
 
 The game directory contains `game.json` (`id, name, description, tags, controls, version, avgRoundSeconds, maxScorePerSec`, plus optional `sdkVersion` and `minAppVersion`) and `dist/` with `index.html` and `thumb.webp`. Bundles over 500 KB gzipped are rejected. Versions are immutable.
 
+### Without a CDN (serve games from the API)
+
+Until there is an S3/R2 bucket and a CDN, the API can serve the built games itself at `/cdn/games/`:
+
+```bash
+# On your machine: build the games and copy them to the server
+cd ../frontend && npm run games:build                              # → games/dist (+ catalog.json)
+scp -r games/dist ubuntu@<server>:/home/ubuntu/gamereels-games
+
+# On the server, in .env.production:
+#   LOCAL_GAMES_DIR=/home/ubuntu/gamereels-games
+#   CDN_BASE_URL=https://<api-domain>/cdn
+
+# On the server, in backend/: create the tables, seed the games, then restart the API
+set -a && . ./.env.production && set +a
+npx prisma migrate deploy
+npm run db:seed
+```
+
+Re-run `npm run db:seed` after copying new builds. Seeding from `LOCAL_GAMES_DIR` disables published games that are not in its `catalog.json`. Note that `publish-game` expects `thumb.webp`, while `games:build` emits `thumb.svg`.
+
 ## Tests
 
 ```bash
