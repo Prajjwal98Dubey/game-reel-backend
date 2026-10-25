@@ -21,6 +21,8 @@
     "db:seed": "prisma db seed",
     "publish-game": "tsx scripts/publish-game.ts",
     "set-game-version": "tsx scripts/set-game-version.ts",
+    "release:withdraw": "tsx scripts/release.ts withdraw",
+    "release:restore": "tsx scripts/release.ts restore",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --config test/jest-e2e.config.js --runInBand",

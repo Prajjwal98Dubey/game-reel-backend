@@ -7,4 +7,5 @@ export * from './feed';
 export * from './plays';
 export * from './events';
 export * from './players';
+export * from './releases';
 export * from './errors';

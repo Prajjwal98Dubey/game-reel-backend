@@ -91,6 +91,26 @@ model BestScore {
   @@id([playerId, gameId])
 }
 
+// An installable app build, saved from the EAS build webhook. The download website serves the
+// newest one that is not withdrawn.
+model AppRelease {
+  id           String   @id @default(uuid())
+  easBuildId   String   @unique
+  platform     String // "android"
+  buildProfile String // "staging"
+  version      String // "1.0.3"
+  buildNumber  String // android versionCode
+  apkUrl       String   @db.VarChar(1024) // on EAS; expires after EAS's retention period
+  buildPageUrl String?  @db.VarChar(512)
+  gitCommit    String?
+  mirroredFile String? // copy under APK_DIR, served at /apk/<file>
+  withdrawn    Boolean  @default(false) // set true to roll back past a bad build
+  completedAt  DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([platform, withdrawn, completedAt])
+}
+
 model Event {
   id        BigInt   @id @default(autoincrement())
   playerId  String

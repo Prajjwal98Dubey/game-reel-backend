@@ -4,11 +4,13 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { IncomingMessage } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { mkdirSync } from 'node:fs';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { LOCAL_CDN_GAMES_PREFIX } from './common/local-cdn/local-cdn';
 import { AppConfig } from './config/env';
+import { APK_PATH_PREFIX } from './modules/releases/apk-mirror';
 
 const REQUEST_ID_HEADER = 'x-request-id';
 
@@ -23,6 +25,8 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
   const adapter = new FastifyAdapter({ genReqId, trustProxy: true, bodyLimit: 256 * 1024 });
   const app = await NestFactory.create<NestFastifyApplication>(AppModule.forRoot(config), adapter, {
     bufferLogs: true,
+    // The EAS webhook signature is checked against the body bytes exactly as received.
+    rawBody: true,
   });
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
@@ -38,6 +42,18 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
       root: config.LOCAL_GAMES_DIR,
       prefix: LOCAL_CDN_GAMES_PREFIX,
       decorateReply: false,
+    });
+  }
+
+  // Release APKs copied from EAS (see APK_DIR). File names are unique per build.
+  if (config.APK_DIR) {
+    mkdirSync(config.APK_DIR, { recursive: true });
+    await app.register(fastifyStatic, {
+      root: config.APK_DIR,
+      prefix: APK_PATH_PREFIX,
+      decorateReply: false,
+      maxAge: '365d',
+      immutable: true,
     });
   }
 

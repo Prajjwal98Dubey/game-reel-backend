@@ -38,6 +38,24 @@ export const EnvSchema = z.object({
    * or e.g. `https://api.example.com/cdn` on a server without a separate CDN.
    */
   LOCAL_GAMES_DIR: optionalString,
+  /** Shared secret for EAS build webhooks (`POST /v1/webhooks/eas`). Unset disables the webhook. */
+  EAS_WEBHOOK_SECRET: optionalString.pipe(
+    z.string().min(32, 'EAS_WEBHOOK_SECRET must be at least 32 characters').optional(),
+  ),
+  /** The EAS build profile whose finished Android builds become public releases. */
+  APP_RELEASE_PROFILE: z.string().default('staging'),
+  /** This API's public origin, used in release links. Defaults to the request's own host. */
+  PUBLIC_API_URL: optionalString.pipe(
+    z
+      .url()
+      .transform((v) => v.replace(/\/+$/, ''))
+      .optional(),
+  ),
+  /**
+   * Directory where release APKs are copied and served at `/apk/`, so download links keep
+   * working after EAS deletes old build files. Unset: links point at EAS directly.
+   */
+  APK_DIR: optionalString,
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
