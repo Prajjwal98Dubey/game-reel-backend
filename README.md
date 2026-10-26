@@ -1,6 +1,6 @@
 # Game Reels API
 
-NestJS (Fastify adapter) + Prisma/MySQL implementation of [BACKEND.md](BACKEND.md).
+NestJS (Fastify adapter) + Prisma/MySQL
 
 ## Quick start
 
