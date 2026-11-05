@@ -20,7 +20,7 @@ cp .env.example .env            # then set real secrets
 docker compose up -d            # mysql + redis
 npm install                     # also runs `prisma generate`
 npm run db:deploy               # apply migrations (use db:migrate when changing the schema)
-npm run db:seed                 # the five prototype games, published at 1.0.0
+npm run db:seed                 # the ten built-in games, published at 1.0.0
 npm run dev                     # http://localhost:3000, docs at /docs
 ```
 

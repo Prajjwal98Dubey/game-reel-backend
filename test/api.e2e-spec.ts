@@ -20,7 +20,18 @@ describe('Game Reels API (e2e)', () => {
   let http: ReturnType<typeof request>;
 
   const CDN = 'https://cdn.test';
-  const GAME_IDS = ['bullseye', 'catch', 'hop', 'pop', 'stack'];
+  const GAME_IDS = [
+    'bullseye',
+    'catch',
+    'echo',
+    'flip',
+    'hop',
+    'mirror',
+    'orbit',
+    'pop',
+    'prism',
+    'stack',
+  ];
 
   async function guest(deviceId: string): Promise<{ playerId: string; auth: string }> {
     const res = await http.post('/v1/players/guest').send({ deviceId }).expect(200);
@@ -119,7 +130,18 @@ describe('Game Reels API (e2e)', () => {
     it('lists every published game sorted by name, with no best yet', async () => {
       const res = await http.get('/v1/games').set('Authorization', auth).expect(200);
       const body = ListGamesResponseSchema.parse(res.body);
-      expect(body.items.map((g) => g.name)).toEqual(['Bullseye', 'Catch', 'Hop', 'Pop', 'Stack']);
+      expect(body.items.map((g) => g.name)).toEqual([
+        'Bullseye',
+        'Catch',
+        'Echo',
+        'Flip',
+        'Hop',
+        'Mirror',
+        'Orbit',
+        'Pop',
+        'Prism',
+        'Stack',
+      ]);
       expect(body.items.every((g) => g.best === null)).toBe(true);
       expect(body.nextCursor).toBeNull();
       expect(body.items.find((g) => g.id === 'stack')).toMatchObject({
@@ -132,7 +154,11 @@ describe('Game Reels API (e2e)', () => {
 
     it('filters by tag', async () => {
       const res = await http.get('/v1/games?tag=timing').set('Authorization', auth).expect(200);
-      expect(res.body.items.map((g: { id: string }) => g.id)).toEqual(['bullseye', 'stack']);
+      expect(res.body.items.map((g: { id: string }) => g.id)).toEqual([
+        'bullseye',
+        'flip',
+        'stack',
+      ]);
     });
 
     it('paginates with an opaque cursor', async () => {
@@ -147,7 +173,7 @@ describe('Game Reels API (e2e)', () => {
         seen.push(...body.items.map((g) => g.id));
         cursor = body.nextCursor;
       }
-      expect(seen).toEqual(['bullseye', 'catch', 'hop', 'pop', 'stack']);
+      expect(seen).toEqual(GAME_IDS);
     });
 
     it('rejects a bad cursor and a bad limit', async () => {
