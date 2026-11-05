@@ -1,0 +1,201 @@
+# CI/CD for the API.
+#
+# - Every pull request into main: typecheck, unit tests, e2e tests.
+# - Every push to main (i.e. every merged PR) and manual runs: the same checks, then a
+#   deploy to EC2. The bundle is built here, copied over SSH, and installed by
+#   deploy/remote-deploy.sh as a new release under $APP_DIR/releases. That script runs the
+#   migrations, switches $APP_DIR/current, reloads PM2, and rolls back if the health
+#   check fails.
+#
+# The required secrets and one-time server setup are listed at the bottom of this file.
+
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck & tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci # postinstall runs `prisma generate`
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      # Testcontainers starts MySQL 8.4 using the runner's Docker.
+      - run: npm run test:e2e
+
+  deploy:
+    name: Deploy to EC2
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Secrets can be stored on the repository or on this environment. Environment secrets
+    # also let you add required reviewers before a deploy runs.
+    environment: production
+    # Deploys run one at a time, in order; a newer merge never cancels a deploy in progress.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      RELEASE: ${{ github.run_number }}-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Build
+        run: |
+          npm ci
+          npm run build
+
+      # dist/ is what runs. prisma/ and prisma.config.ts are needed for migrations. src/
+      # (with the generated client) is shipped only so `prisma db seed` (tsx) can run on the server.
+      - name: Package release
+        run: |
+          tar -czf "$RUNNER_TEMP/release.tgz" \
+            dist src prisma prisma.config.ts package.json package-lock.json tsconfig.json deploy
+
+      - name: Write .env.production from secrets
+        env:
+          # Required
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          CURSOR_SECRET: ${{ secrets.CURSOR_SECRET }}
+          CDN_BASE_URL: ${{ secrets.CDN_BASE_URL || vars.CDN_BASE_URL }}
+          # Optional (each one can also be a repository/environment variable)
+          PORT: ${{ secrets.PORT || vars.PORT }}
+          LOG_LEVEL: ${{ secrets.LOG_LEVEL || vars.LOG_LEVEL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS || vars.CORS_ORIGINS }}
+          LOCAL_GAMES_DIR: ${{ secrets.LOCAL_GAMES_DIR || vars.LOCAL_GAMES_DIR }}
+          EAS_WEBHOOK_SECRET: ${{ secrets.EAS_WEBHOOK_SECRET }}
+          APP_RELEASE_PROFILE: ${{ secrets.APP_RELEASE_PROFILE || vars.APP_RELEASE_PROFILE }}
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL || vars.PUBLIC_API_URL }}
+          APK_DIR: ${{ secrets.APK_DIR || vars.APK_DIR }}
+        run: |
+          umask 077
+          missing=()
+          for k in DATABASE_URL JWT_SECRET CURSOR_SECRET CDN_BASE_URL; do
+            [ -n "${!k}" ] || missing+=("$k")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            exit 1
+          fi
+          out="$RUNNER_TEMP/env.production"
+          echo "NODE_ENV=production" > "$out"
+          for k in PORT LOG_LEVEL DATABASE_URL REDIS_URL JWT_SECRET CURSOR_SECRET CDN_BASE_URL \
+                   CORS_ORIGINS LOCAL_GAMES_DIR EAS_WEBHOOK_SECRET APP_RELEASE_PROFILE \
+                   PUBLIC_API_URL APK_DIR; do
+            v="${!k}"
+            [ -n "$v" ] || continue
+            # Single-quoted values are taken literally by both Node's --env-file and dotenv.
+            case "$v" in
+              *"'"* | *$'\n'*) echo "::error::$k must not contain a single quote or a newline"; exit 1 ;;
+            esac
+            printf "%s='%s'\n" "$k" "$v" >> "$out"
+          done
+
+      - name: Configure SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT || vars.EC2_SSH_PORT || '22' }}
+          EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          for k in EC2_HOST EC2_USER EC2_SSH_KEY; do
+            [ -n "${!k}" ] || { echo "::error::Missing required secret: $k"; exit 1; }
+          done
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$EC2_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::EC2_KNOWN_HOSTS is not set; trusting the host key that ssh-keyscan returns."
+            ssh-keyscan -p "$EC2_SSH_PORT" -H "$EC2_HOST" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          cat > ~/.ssh/config <<EOF
+          Host ec2
+            HostName $EC2_HOST
+            User $EC2_USER
+            Port $EC2_SSH_PORT
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          EOF
+
+      - name: Upload release
+        run: |
+          stage="/tmp/gamereels-release-$RELEASE"
+          ssh ec2 "rm -rf '$stage' && mkdir -p '$stage'"
+          scp -q "$RUNNER_TEMP/release.tgz" "ec2:$stage.tgz"
+          ssh ec2 "tar -xzf '$stage.tgz' -C '$stage' && rm -f '$stage.tgz'"
+          # The env file goes over stdin so it never touches the server's /tmp.
+          ssh ec2 "umask 077 && cat > '$stage/.env.production'" < "$RUNNER_TEMP/env.production"
+
+      - name: Install, migrate and switch
+        env:
+          APP_DIR: ${{ vars.APP_DIR }}
+          PM2_APP_NAME: ${{ vars.PM2_APP_NAME }}
+          SEED_ON_DEPLOY: ${{ vars.SEED_ON_DEPLOY }}
+        run: |
+          stage="/tmp/gamereels-release-$RELEASE"
+          cmd=$(printf 'APP_DIR=%q PM2_APP_NAME=%q SEED_ON_DEPLOY=%q bash %q %q' \
+            "$APP_DIR" "$PM2_APP_NAME" "$SEED_ON_DEPLOY" "$stage/deploy/remote-deploy.sh" "$RELEASE")
+          ssh ec2 "$cmd"
+
+      - name: Public health check
+        if: vars.HEALTHCHECK_URL != ''
+        env:
+          HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL }}
+        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$HEALTHCHECK_URL"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key "$RUNNER_TEMP/env.production"
+
+# ---------------------------------------------------------------------------------------------
+# Secrets (Settings → Secrets and variables → Actions, or on the "production" environment)
+#
+#   SSH access                  EC2_HOST, EC2_USER, EC2_SSH_KEY
+#                               optional: EC2_SSH_PORT (default 22), EC2_KNOWN_HOSTS
+#   Backend, required           DATABASE_URL, JWT_SECRET, CURSOR_SECRET, CDN_BASE_URL
+#   Backend, optional           PORT, LOG_LEVEL, REDIS_URL, CORS_ORIGINS, LOCAL_GAMES_DIR,
+#                               EAS_WEBHOOK_SECRET, APP_RELEASE_PROFILE, PUBLIC_API_URL, APK_DIR
+#
+# Variables (optional): APP_DIR (default ~/gamereels-api), PM2_APP_NAME (default gamereels-api),
+#   SEED_ON_DEPLOY ("true" runs `prisma db seed` after migrating), HEALTHCHECK_URL
+#   (e.g. https://api.example.com/health/ready).
+#
+# One-time server setup (Ubuntu):
+#   1. Node 24 and PM2: `npm i -g pm2`, then `pm2 startup` (run the command it prints).
+#   2. Allow the deploy key: append its public key to ~/.ssh/authorized_keys.
+#   3. Stop the old process if it is a different PM2 app on the same port:
+#      `pm2 delete <old-name> && pm2 save`.
+# ---------------------------------------------------------------------------------------------
