@@ -1,7 +1,7 @@
 /**
  * Seeds published games. Safe to re-run.
  *
- * - Default: the five prototype games at 1.0.0, with bundle URLs on the CDN layout used by
+ * - Default: the ten built-in games at 1.0.0, with bundle URLs on the CDN layout used by
  *   scripts/publish-game.ts (`<CDN_BASE_URL>/games/<id>/<version>/`).
  * - With LOCAL_GAMES_DIR (local development): the games built by the frontend
  *   (`frontend/games/dist`), read from its catalog.json, so ids, versions and thumbnails
@@ -92,6 +92,56 @@ export const DEFAULT_GAMES: SeedGame[] = [
     controls: ['tap'],
     avgRoundSeconds: 35,
     maxScorePerSec: 3,
+  }),
+  prototype({
+    id: 'orbit',
+    name: 'Orbit',
+    description:
+      'Your moon circles the planet. Tap to reverse, grab each star before it burns out, and never touch a comet.',
+    tags: ['reflex', 'one-tap'],
+    controls: ['tap'],
+    avgRoundSeconds: 30,
+    maxScorePerSec: 2,
+  }),
+  prototype({
+    id: 'mirror',
+    name: 'Mirror',
+    description:
+      'Steer two orbs that move as reflections. Some gaps fit only one, so both must find a way through.',
+    tags: ['drag', 'brain'],
+    controls: ['drag-x'],
+    avgRoundSeconds: 30,
+    maxScorePerSec: 2,
+  }),
+  prototype({
+    id: 'prism',
+    name: 'Prism',
+    description:
+      'Tap to turn the colour wheel so each falling drop lands on its own colour. Three misses end the round.',
+    tags: ['colour', 'reflex'],
+    controls: ['tap'],
+    avgRoundSeconds: 35,
+    maxScorePerSec: 2,
+  }),
+  prototype({
+    id: 'echo',
+    name: 'Echo',
+    description:
+      'Repeat the pattern of lights. Later on, pads swap places, so follow the colour, not the spot.',
+    tags: ['memory', 'brain'],
+    controls: ['tap'],
+    avgRoundSeconds: 45,
+    maxScorePerSec: 3,
+  }),
+  prototype({
+    id: 'flip',
+    name: 'Flip',
+    description:
+      'Tap to flip gravity and run on the ceiling. Dodge the blocks on both rails for as long as you can.',
+    tags: ['timing', 'endless'],
+    controls: ['tap'],
+    avgRoundSeconds: 25,
+    maxScorePerSec: 2,
   }),
 ];
 
